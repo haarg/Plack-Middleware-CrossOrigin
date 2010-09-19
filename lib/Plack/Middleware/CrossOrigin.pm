@@ -132,16 +132,16 @@ to allow XMLHttpRequests across domains.
 
 =item origins
 
-A list of allowed origins.  * can be specified to allow access from
+A list of allowed origins.  '*' can be specified to allow access from
 any origin.
 
 =item headers
 
-A list of allowed headers.  * can be specified to allow any headers.
+A list of allowed headers.  '*' can be specified to allow any headers.
 
 =item methods
 
-A list of allowed methods.  * can be specified to allow any methods.
+A list of allowed methods.  '*' can be specified to allow any methods.
 
 =item max_age
 
@@ -160,7 +160,9 @@ Whether the resource supports credentials.
 =head1 SEE ALSO
 
 =for :list
-* L<http://www.w3.org/TR/cors/>
+* L<W3C Spec for Cross-Origin Resource Sharing|http://www.w3.org/TR/cors/>
+* L<Mozilla Developer Center - HTTP Access Control|https://developer.mozilla.org/En/HTTP_access_control>
+* L<Mozilla Developer Center - Server-Side Access Control|https://developer.mozilla.org/En/Server-Side_Access_Control>
 
 =cut
 
