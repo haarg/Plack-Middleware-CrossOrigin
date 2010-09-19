@@ -52,8 +52,12 @@ sub cors_headers {
     my $request_headers = $env->{HTTP_ACCESS_CONTROL_REQUEST_HEADERS};
     my @request_headers = $request_headers ? (split /,\s*/, $request_headers) : ();
 
+    my @origins = split / /, $env->{HTTP_ORIGIN};
+    return
+        unless @origins;
+
     if (! $allowed_origins{'*'} ) {
-        for my $origin (split / /, $env->{HTTP_ORIGIN}) {
+        for my $origin (@origins) {
             return
                 unless $allowed_origins{$origin};
         }
@@ -156,6 +160,10 @@ A list of allowed headers to expose to the client.
 Whether the resource supports credentials.
 
 =back
+
+=method cors_headers ( $env )
+
+Returns a list of headers to add for a CORS request given the request and the configuration.
 
 =head1 SEE ALSO
 
