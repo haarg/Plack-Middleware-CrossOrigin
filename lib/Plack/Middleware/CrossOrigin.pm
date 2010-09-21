@@ -46,7 +46,7 @@ sub cors_headers {
     my @allowed_methods = ref $self->methods ? @{ $self->methods } : $self->methods || ();
     my %allowed_methods = map { $_ => 1 } @allowed_methods;
     my @allowed_headers = ref $self->headers ? @{ $self->headers } : $self->headers || ();
-    my %allowed_headers = map { lc $_ => 1 } @allowed_methods;
+    my %allowed_headers = map { lc $_ => 1 } @allowed_headers;
 
     my $request_method = $env->{HTTP_ACCESS_CONTROL_REQUEST_METHOD};
     my $request_headers = $env->{HTTP_ACCESS_CONTROL_REQUEST_HEADERS};
