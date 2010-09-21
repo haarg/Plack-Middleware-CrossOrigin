@@ -136,12 +136,15 @@ to allow XMLHttpRequests across domains.
 
 =item origins
 
-A list of allowed origins.  '*' can be specified to allow access from
-any origin.
+A list of allowed origins.  '*' can be specified to allow access
+from any origin.
 
 =item headers
 
-A list of allowed headers.  '*' can be specified to allow any headers.
+A list of allowed headers.  '*' can be specified to allow any
+headers.  Many AJAX frameworks add the C<X-Requested-With> header to
+requests they make, so it is recommended that at least header be
+allowed.
 
 =item methods
 
