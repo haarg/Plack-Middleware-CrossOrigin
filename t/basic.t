@@ -27,6 +27,12 @@ test_psgi
         $res = $cb->($req);
         is $res->header('Access-Control-Allow-Origin'), '*', 'Access-Control-Allow-Origin header added';
 
+        $req = HTTP::Request->new(POST => 'http://localhost/', [
+            'Origin' => 'www.example.com',
+        ]);
+        $res = $cb->($req);
+        is $res->content, 'Hello World', "CORS handling doesn't interfere with request content";
+
         $req = HTTP::Request->new(OPTIONS => 'http://localhost/', [
             'Access-Control-Request-Method' => 'POST',
             'Origin' => 'www.example.com',
