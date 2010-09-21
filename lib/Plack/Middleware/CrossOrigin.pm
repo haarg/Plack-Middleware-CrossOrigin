@@ -109,7 +109,7 @@ sub cors_headers {
     }
     if ($self->expose_headers) {
         my @expose_headers = ref $self->expose_headers ? @{ $self->expose_headers } : $self->expose_headers;
-        push @headers, 'Access-Control-Allow-Origin' => $_
+        push @headers, 'Access-Control-Expose-Headers' => $_
             for @expose_headers;
     }
     return @headers;
