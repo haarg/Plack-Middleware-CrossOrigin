@@ -1,6 +1,7 @@
 Revision history for Plack-Middleware-CrossOrigin
 
 {{$NEXT}}
+ - Fixed handling of expose_headers
 
 0.002     2010-09-21 14:47:35 America/Chicago
  - Fixed handling of allowed headers
