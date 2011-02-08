@@ -12,6 +12,7 @@ test_psgi
             origins => '*',
             headers => '*',
             methods => '*',
+            credentials => 0,
             max_age => 60*60*24*30,
             expose_headers => 'X-Exposed-Header',
         ;
@@ -51,12 +52,6 @@ test_psgi
         ]);
         $res = $cb->($req);
         ok $res->header('Access-Control-Allow-Origin'), 'Request with extra headers allowed';
-
-        $req = HTTP::Request->new(OPTIONS => 'http://localhost/', [
-            'Origin' => 'http://www.example.com',
-        ]);
-        $res = $cb->($req);
-        is $res->header('Access-Control-Allow-Origin'), undef, 'Preflight without method specified rejected';
     };
 
 test_psgi
@@ -66,8 +61,12 @@ test_psgi
             methods => ['GET', 'POST'],
             headers => ['X-Extra-Header', 'X-Extra-Header-2'],
             max_age => 60*60*24*30,
+            expose_headers => '*',
         ;
-        sub { [ 200, [ 'Content-Type' => 'text/plain' ], [ 'Hello World' ] ] };
+        sub { [ 200, [
+            'Content-Type' => 'text/plain',
+            'X-Some-Other-Header' => 'true',
+        ], [ 'Hello World' ] ] };
     },
     client => sub {
         my $cb = shift;
@@ -106,6 +105,13 @@ test_psgi
         ]);
         $res = $cb->($req);
         is $res->header('Access-Control-Allow-Origin'), undef, 'Request with unmatched method rejected';
+
+        $req = HTTP::Request->new(OPTIONS => 'http://localhost/', [
+            'Origin' => 'http://www.example.com',
+        ]);
+        $res = $cb->($req);
+        is $res->content, 'Hello World', 'OPTIONS request without Allow-Origin processes as normal';
+        is $res->header('Access-Control-Expose-Headers'), 'X-Some-Other-Header', 'Wildcard expose headers returned';
     };
 
 test_psgi
@@ -129,6 +135,30 @@ test_psgi
         $res = $cb->($req);
         is $res->header('Access-Control-Allow-Credentials'), 'true', 'Resource with credentials adds correct header';
         is $res->header('Access-Control-Allow-Origin'), 'http://www.example.com', '... and an explicit origin';
+    };
+
+my $has_run;
+test_psgi
+    app => builder {
+        enable 'CrossOrigin',
+            origins => 'http://localhost',
+        ;
+        sub {
+            $has_run = 1;
+            [ 200, [ 'Content-Type' => 'text/plain' ], [ 'Hello World' ] ];
+        };
+    },
+    client => sub {
+        my $cb = shift;
+        my $req;
+        my $res;
+
+        $req = HTTP::Request->new(POST => 'http://localhost/', [
+            'Origin' => 'http://www.example.com',
+        ]);
+        $res = $cb->($req);
+        is $res->code, 403, 'Disallowed simple request returns 403 error';
+        ok ! $has_run, ' ... and aborts before running main app';
     };
 
 done_testing;
