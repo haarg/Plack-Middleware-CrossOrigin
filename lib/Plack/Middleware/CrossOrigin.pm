@@ -189,7 +189,7 @@ sub call {
     # for preflighted GET requests, WebKit doesn't include Origin
     # with the actual request.  Has been fixed in trunk, but released
     # versions of Safari and Chrome still have the issue.
-    elsif ($env->{REQUEST_METHOD} eq 'GET' && $env->{HTTP_USER_AGENT} =~ /AppleWebKit/) {
+    elsif ($env->{REQUEST_METHOD} eq 'GET' && $env->{HTTP_USER_AGENT} && $env->{HTTP_USER_AGENT} =~ /AppleWebKit/) {
         my $origin_header;
         # transforming the referrer into the origin is the best we can do
         my ( $origin ) = ( $env->{HTTP_REFERER} =~ m{\A ( \w+://[^/]+ )}msx );
