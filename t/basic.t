@@ -52,6 +52,14 @@ test_psgi
         ]);
         $res = $cb->($req);
         ok $res->header('Access-Control-Allow-Origin'), 'Request with extra headers allowed';
+
+        $req = HTTP::Request->new(GET => 'http://localhost/', [
+            'Referer' => 'http://www.example.com/page',
+            'User-Agent' => 'AppleWebKit/534.16',
+        ]);
+        $res = $cb->($req);
+        is $res->header('Access-Control-Allow-Origin'), '*', 'Buggy GET request from WebKit includes Allow-Origin header';
+
     };
 
 test_psgi
@@ -112,6 +120,13 @@ test_psgi
         $res = $cb->($req);
         is $res->content, 'Hello World', 'OPTIONS request without Allow-Origin processes as normal';
         is $res->header('Access-Control-Expose-Headers'), 'X-Some-Other-Header', 'Wildcard expose headers returned';
+
+        $req = HTTP::Request->new(GET => 'http://localhost/', [
+            'Referer' => 'http://www.example.com/page',
+            'User-Agent' => 'AppleWebKit/534.16',
+        ]);
+        $res = $cb->($req);
+        is $res->header('Access-Control-Allow-Origin'), 'http://www.example.com', 'Buggy GET request from WebKit includes Allow-Origin header based on referer';
     };
 
 test_psgi
