@@ -13,7 +13,8 @@ sub alt_addr {
         return gethostbyaddr(inet_aton($address), AF_INET);
     }
     else {
-        return inet_ntoa(inet_aton($address));
+        no warnings;
+        return ( eval { inet_ntoa(inet_aton($address)) } || $address );
     }
 }
 
@@ -51,7 +52,8 @@ builder {
                 my $in_head = $req->headers;
                 return Plack::Util::response_cb($app->($env), sub {
                     my $res = shift;
-                    if ( $req->method eq 'OPTIONS' && $in_head->header('Access-Control-Request-Method') ) {
+                    my $preflight = $req->method eq 'OPTIONS' && $in_head->header('Access-Control-Request-Method');
+                    if ( $preflight ) {
                         $last_cors .= "Preflight request:\n";
                     }
                     else {
@@ -83,7 +85,8 @@ builder {
                             $last_cors .= sprintf "    %-30s: %s\n", $header, $value;
                         }
                     }
-                    if ( $req->method ne 'OPTIONS' || ! $in_head->header('Access-Control-Request-Method') ) {
+                    my $will_browser_see = !( $preflight || ( $in_head->header('Origin') && ! @cors_headers) );
+                    if ($will_browser_see) {
                         $res->[2] = [$last_cors];
                         $last_cors = '';
                     }
@@ -99,20 +102,23 @@ builder {
     mount '/' => sub {
         my $env = shift;
         my $req = Plack::Request->new($env);
+
         my $cors = $req->base;
         $cors->host(alt_addr($cors->host));
         $cors->path($cors->path . 'cors');
 
-        my $last_cors = $req->base;
-        $last_cors->path($last_cors->path . 'last_cors');
 
-        return [ 200, ['Content-Type' => 'text/html'], [ sprintf <<'END_HTML', $cors, $last_cors ] ];
+        my $last_cors_url = $req->base;
+        $last_cors_url->path($last_cors_url->path . 'last_cors');
+
+        return [ 200, ['Content-Type' => 'text/html'], [
+            sprintf <<'END_HTML', $cors->scheme, $cors->host_port, $cors->path_query, $last_cors_url ] ];
 <!DOCTYPE html>
 <html>
 <head>
     <title>CORS Test</title>
     <style type="text/css">
-        textarea {
+        textarea, .url, .url * {
             font-family: monospace;
         }
     </style>
@@ -120,9 +126,9 @@ builder {
 <body>
     <div>
         <form id="cors-form">
-            <div>Requesting from %s</div>
+            <div>Requesting from <span class="url">%s://<input type="text" id="request-host" value="%s" />%s</span></div>
             <div>
-                <label>Method
+                <label>Method :
                     <select id="request-method">
                         <option value="GET">GET</option>
                         <option value="POST">POST</option>
@@ -132,12 +138,13 @@ builder {
                     </select>
                 </label>
             </div>
-            <fieldset>
+            <fieldset style="width: 12em">
                 <legend>Headers</legend>
-                <label><input type="checkbox" id="x-requested-with" /> Add X-Requested-With</label>
-                <label><input type="checkbox" id="x-something-else" /> Add X-Something-Else</label>
+                <div><label><input type="checkbox" id="x-requested-with" /> Add X-Requested-With</label></div>
+                <div><label><input type="checkbox" id="x-something-else" /> Add X-Something-Else</label></div>
             </fieldset>
-            <div><button>Send Request</button></div>
+            <div><input type="submit" value="Send Request" id="send-request" /></div>
+            <hr />
             <div>Result Status: <span id="result-status"></span></div>
             <div>Results: <div><textarea cols="100" rows="20" readonly="readonly" id="results"></textarea></div></div>
         </form>
@@ -148,25 +155,47 @@ builder {
             var results = document.getElementById('results');
             var status = document.getElementById('result-status');
             var method = document.getElementById('request-method');
+            var host = document.getElementById('request-host');
             var xrequestedwith = document.getElementById('x-requested-with');
             var xsomethingelse = document.getElementById('x-something-else');
 
             results.value = '';
+            if (typeof XMLHttpRequest != "undefined" && ("withCredentials" in ( new XMLHttpRequest() ) ) ) {}
+            else if (typeof XDomainRequest != "undefined") {
+                xrequestedwith.disabled = true;
+                xrequestedwith.checked = false;
+                xsomethingelse.disabled = true;
+                xsomethingelse.checked = false;
+            }
+            else {
+                status.innerHTML = 'Unsupported browser';
+                document.getElementById('send-request').disabled = true;
+                return;
+            }
 
-            form.addEventListener("submit", function(e) {
-                e.preventDefault();
+            var formsubmit = function(e) {
+                e = e || window.event;
+                if (e.preventDefault)
+                    e.preventDefault();
+                e.returnValue = false;
                 results.value = '';
-                status.innerHTML = 'Running';
+                var request_address = "%1$s://"+host.value+"%3$s?no_cache="+(new Date()).getTime();
                 var xhr = new XMLHttpRequest();
                 if ("withCredentials" in xhr){
-                    xhr.open(method.value, '%1$s', true);
+                    xhr.open(method.value, request_address, true);
                 }
                 else if (typeof XDomainRequest != "undefined") {
                     xhr = new XDomainRequest();
-                    xhr.open(method.value, '%1$s');
+                    try {
+                        xhr.open(method.value, request_address);
+                    }
+                    catch(e) {
+                        status.innerHTML = 'Unsupported method';
+                        return;
+                    }
                 }
                 else {
-                    alert('unsupported');
+                    status.innerHTML = 'Unsupported browser';
                     return;
                 }
                 if (xrequestedwith.checked) {
@@ -176,30 +205,65 @@ builder {
                     xhr.setRequestHeader('X-Something-Else', 'something-else');
                 }
 
-                xhr.onreadystatechange = function() {
-                    if (xhr.readyState == 4) {
-                        if (xhr.status == 200) {
-                            status.innerHTML = 'Success';
-                            results.value = xhr.responseText;
+                var complete = function() {
+                    if (xhr.status == 200) {
+                        status.innerHTML = 'Success';
+                        results.value = xhr.responseText;
+                        if (xhr.getResponseHeader) {
                             if (xhr.getResponseHeader('X-Some-Other-Header')) {
                                 results.value += "\nExtra header was exposed\n";
                             }
+                            else {
+                                results.value += "\nExtra header was not exposed\n";
+                            }
                         }
                         else {
-                            status.innerHTML = 'Failure';
-                            var xhr2 = new XMLHttpRequest();
-                            xhr2.open('GET', '%2$s', true);
-                            xhr2.onreadystatechange = function() {
-                                if (xhr2.readyState == 4) {
-                                    results.value = xhr2.responseText;
-                                }
-                            };
-                            xhr2.send();
+                            results.value += "\nExtra headers are unsupported\n";
                         }
                     }
+                    else {
+                        status.innerHTML = 'Failure';
+                        var xhr2 = new XMLHttpRequest();
+                        xhr2.open('GET', '%4$s?no_cache='+(new Date()).getTime(), true);
+                        xhr2.onreadystatechange = function() {
+                            if (xhr2.readyState == 4) {
+                                results.value = xhr2.responseText;
+                            }
+                        };
+                        xhr2.send();
+                    }
                 };
+
+                if ('onreadystatechange' in xhr) {
+                    xhr.onreadystatechange = function() {
+                        if (xhr.readyState == 4) {
+                            complete();
+                        }
+                    };
+                }
+                // XDomainRequest uses different events and has no status property
+                else if ('onload' in xhr) {
+                    xhr.onload = function() {
+                        xhr.status = 200;
+                        complete();
+                    };
+                    xhr.onerror = function() {
+                        xhr.status = 500;
+                        complete();
+                    };
+                }
+                status.innerHTML = 'Running';
                 xhr.send();
-            }, false);
+                return false;
+            };
+
+            if (form.addEventListener) {
+                form.addEventListener('submit', formsubmit, false);
+            }
+            // we'll never get this far in old browsers but including it anyway
+            else if (form.attachEvent) {
+                form.attachEvent('onsubmit', formsubmit);
+            }
         })();
     </script>
 </body>
