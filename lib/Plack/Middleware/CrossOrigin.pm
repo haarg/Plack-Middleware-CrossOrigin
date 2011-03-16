@@ -92,7 +92,6 @@ sub _expose_headers {
 
 sub call {
     my ($self, $env) = @_;
-
     if ($env->{HTTP_ORIGIN}) {
         my @origins = split / /, $env->{HTTP_ORIGIN};
         my $request_method = $env->{HTTP_ACCESS_CONTROL_REQUEST_METHOD};
@@ -186,6 +185,27 @@ sub call {
 
             push @{$res->[1]}, @headers;
         });
+    }
+    # for preflighted GET requests, WebKit doesn't include Origin
+    # with the actual request.  Has been fixed in trunk, but released
+    # versions of Safari and Chrome still have the issue.
+    elsif ($env->{REQUEST_METHOD} eq 'GET' && $env->{HTTP_USER_AGENT} =~ /AppleWebKit/) {
+        my $origin_header;
+        # transforming the referrer into the origin is the best we can do
+        my ( $origin ) = ( $env->{HTTP_REFERER} =~ m{\A ( \w+://[^/]+ )}msx );
+        my %allowed_origins = map { $_ => 1 } $self->_origins;
+        if ( $allowed_origins{'*'} ) {
+            $origin_header = '*';
+        }
+        elsif ($origin && $allowed_origins{$origin} ) {
+            $origin_header = $origin;
+        }
+        if ($origin_header) {
+            return $self->response_cb($self->app->($env), sub {
+                my $res = shift;
+                push @{$res->[1]}, 'Access-Control-Allow-Origin' => $origin_header;
+            });
+        }
     }
     return $self->app->($env);
 }
