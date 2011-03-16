@@ -158,7 +158,17 @@ builder {
                 results.value = '';
                 status.innerHTML = 'Running';
                 var xhr = new XMLHttpRequest();
-                xhr.open(method.value, '%1$s', true);
+                if ("withCredentials" in xhr){
+                    xhr.open(method.value, '%1$s', true);
+                }
+                else if (typeof XDomainRequest != "undefined") {
+                    xhr = new XDomainRequest();
+                    xhr.open(method.value, '%1$s');
+                }
+                else {
+                    alert('unsupported');
+                    return;
+                }
                 if (xrequestedwith.checked) {
                     xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
                 }
