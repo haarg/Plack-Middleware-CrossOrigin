@@ -2,22 +2,22 @@ Revision history for Plack-Middleware-CrossOrigin
 
 {{$NEXT}}
 
-0.005     2011-03-16 13:46:42 America/Chicago
+0.005     Mar 16 2011
  - Add a workaround for WebKit browsers with preflighted GET requests.
 
-0.004     2011-02-08 11:59:11 America/Chicago
+0.004     Feb 08 2011
  - Allow setting expose_headers to * to allow all headers.
  - Fix cross origin OPTIONS requests.
  - Include all default HTTP and WebDAV methods by default.
  - Include common WebDAV and web framework headers as allowed headers by
      default.
 
-0.003     2010-09-22 10:02:47 America/Chicago
+0.003     Sep 22 2010
  - Fixed handling of expose_headers
 
-0.002     2010-09-21 14:47:35 America/Chicago
+0.002     Sep 21 2010
  - Fixed handling of allowed headers
 
-0.001     2010-09-19 12:34:37 America/Chicago
+0.001     Sep 19 2010
  - Initial release
 
