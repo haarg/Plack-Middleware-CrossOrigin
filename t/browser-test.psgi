@@ -7,6 +7,14 @@ use Plack::Util;
 use Plack::Middleware::CrossOrigin;
 use Socket;
 
+# Adjust these values to test how browsers respond to the different headers
+my $co_mw = Plack::Middleware::CrossOrigin->new(
+    origins => '*',
+    methods => '*',
+    expose_headers => '*',
+    max_age => 0,
+);
+
 sub alt_addr {
     my $address = shift;
     if ($address =~ /^[\d.]+$/) {
@@ -29,12 +37,6 @@ builder {
             $app->($env);
         };
     };
-    my $co_mw = Plack::Middleware::CrossOrigin->new(
-        origins => '*',
-        methods => '*',
-        expose_headers => '*',
-        max_age => 0,
-    );
     my $last_cors = '';
     mount '/last_cors' => sub {
         my $out = $last_cors;
