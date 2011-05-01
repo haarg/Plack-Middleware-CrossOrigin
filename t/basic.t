@@ -60,6 +60,13 @@ test_psgi
         $res = $cb->($req);
         is $res->header('Access-Control-Allow-Origin'), '*', 'Buggy GET request from WebKit includes Allow-Origin header';
 
+        $req = HTTP::Request->new(GET => 'http://localhost/', [
+            'Referer' => 'http://www.example.com/page',
+            'User-Agent' => 'AppleWebKit/534.19',
+        ]);
+        $res = $cb->($req);
+        is $res->header('Access-Control-Allow-Origin'), undef, 'New versions of WebKit don\'t trigger referer workaround';
+
     };
 
 test_psgi
@@ -127,6 +134,13 @@ test_psgi
         ]);
         $res = $cb->($req);
         is $res->header('Access-Control-Allow-Origin'), 'http://www.example.com', 'Buggy GET request from WebKit includes Allow-Origin header based on referer';
+
+        $req = HTTP::Request->new(GET => 'http://localhost/', [
+            'Referer' => 'http://www.example.com/page',
+            'User-Agent' => 'AppleWebKit/534.19',
+        ]);
+        $res = $cb->($req);
+        is $res->header('Access-Control-Allow-Origin'), undef, 'New versions of WebKit don\'t trigger referer workaround';
     };
 
 test_psgi
