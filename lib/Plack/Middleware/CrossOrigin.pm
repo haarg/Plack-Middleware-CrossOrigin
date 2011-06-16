@@ -92,8 +92,8 @@ sub _expose_headers {
 
 sub call {
     my ($self, $env) = @_;
-    if ($env->{HTTP_ORIGIN}) {
-        my @origins = split / /, $env->{HTTP_ORIGIN};
+    if (my $origin = $env->{HTTP_ORIGIN}) {
+        my @origins = split / /, $origin;
         my $request_method = $env->{HTTP_ACCESS_CONTROL_REQUEST_METHOD};
         my $request_headers = $env->{HTTP_ACCESS_CONTROL_REQUEST_HEADERS};
         my @request_headers = $request_headers ? (split /,\s*/, $request_headers) : ();
@@ -129,39 +129,30 @@ sub call {
             }
         }
         if ($self->credentials) {
-            push @headers, 'Access-Control-Allow-Origin' => $env->{HTTP_ORIGIN};
             push @headers, 'Access-Control-Allow-Credentials' => 'true';
         }
-        else {
-            if ($allowed_origins{'*'}) {
-                push @headers, 'Access-Control-Allow-Origin' => '*';
-            }
-            else {
-                push @headers, 'Access-Control-Allow-Origin' => $env->{HTTP_ORIGIN};
-            }
+        elsif ($allowed_origins{'*'}) {
+            $origin = '*';
         }
+        push @headers, 'Access-Control-Allow-Origin' => $origin;
+
         my $res;
         if ($preflight) {
+            if ($allowed_methods{'*'}) {
+                @allowed_methods = $request_method;
+            }
+            if ( $allowed_headers{'*'} ) {
+                @allowed_headers = @request_headers;
+            }
+
             if (defined $self->max_age) {
                 push @headers, 'Access-Control-Max-Age' => $self->max_age;
             }
+            push @headers, 'Access-Control-Allow-Methods' => $_
+                for @allowed_methods;
+            push @headers, 'Access-Control-Allow-Headers' => $_
+                for @allowed_headers;
 
-            if ($allowed_methods{'*'}) {
-                push @headers, 'Access-Control-Allow-Methods' => $request_method;
-            }
-            else {
-                push @headers, 'Access-Control-Allow-Methods' => $_
-                    for @allowed_methods;
-            }
-
-            if ( $allowed_headers{'*'} ) {
-                push @headers, 'Access-Control-Allow-Headers' => $_
-                    for @request_headers;
-            }
-            else {
-                push @headers, 'Access-Control-Allow-Headers' => $_
-                    for @allowed_headers;
-            }
             $res = [200, [ 'Content-Type' => 'text/plain' ], [] ];
         }
         else {
@@ -173,15 +164,12 @@ sub call {
 
             if ($expose_headers{'*'}) {
                 my %headers = @{ $res->[1] };
-                delete $headers{$_}
-                    for @simple_response_headers;
-                push @headers, 'Access-Control-Expose-Headers' => $_
-                    for keys %headers;
+                delete @headers{@simple_response_headers};
+                @expose_headers = keys %headers;
             }
-            else {
-                push @headers, 'Access-Control-Expose-Headers' => $_
-                    for @expose_headers;
-            }
+
+            push @headers, 'Access-Control-Expose-Headers' => $_
+                for @expose_headers;
 
             push @{$res->[1]}, @headers;
         });
