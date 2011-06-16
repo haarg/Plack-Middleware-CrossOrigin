@@ -228,7 +228,8 @@ sub _return_403 {
 =head1 DESCRIPTION
 
 Adds Cross Origin Request Sharing headers used by modern browsers
-to allow C<XMLHttpRequest> to work across domains.
+to allow C<XMLHttpRequest> to work across domains.  This module
+will also help protect against CSRF attacks in some browsers.
 
 This module attempts to fully conform to the CORS spec, while
 allowing additional flexibility in the values specified for the of
@@ -256,6 +257,13 @@ that the browser will first send a special request to the server
 to check if access is allowed.  If the server allows it by responding
 with the correct headers, the actual request is then performed.
 
+=head1 CSRF Protection
+
+Some browsers will also provide same headers with cross domain
+C<POST> requests from HTML forms.  These requests will also be
+checked against the allowed origins and rejected before they reach
+the rest of your Plack application.
+
 =head1 CONFIGURATION
 
 =over 8
@@ -264,14 +272,15 @@ with the correct headers, the actual request is then performed.
 
 A list of allowed origins.  Origins should be formatted as a URL
 scheme and host, with no path information. (C<http://www.example.com>)
-'*' can be specified to allow access from any location.  Must be
+'C<*>' can be specified to allow access from any location.  Must be
 specified for this middleware to have any effect.  This will be
 matched against the C<Origin> request header, and will control the
-C<Access-Control-Allow-Origin> response header.
+C<Access-Control-Allow-Origin> response header.  If the origin does
+not match, the request is aborted.
 
 =item headers
 
-A list of allowed request headers.  '*' can be specified to allow
+A list of allowed request headers.  'C<*>' can be specified to allow
 any headers.  Controls the C<Access-Control-Allow-Headers> response
 header.  Includes a set of headers by default to simplify working
 with WebDAV and AJAX frameworks:
@@ -321,16 +330,22 @@ Different browsers have different levels of support for CORS headers.
 =item Gecko (Firefox, Seamonkey)
 
 Initially supported in Gecko 1.9.1 (Firefox 3.5).  Supports the
-complete spec.
+complete CORS spec for C<XMLHttpRequest>s.
+
+Does not yet provide the C<Origin> header for CSRF protection
+(L<Bugzilla #446344|https://bugzilla.mozilla.org/show_bug.cgi?id=446344>).
 
 =item WebKit (Safari, Google Chrome)
 
 Initially supported in Safari 4 and Chrome 3.  The C<expose_headers>
-feature is currently unsupported (L<WebKit bug 41210|https://bugs.webkit.org/show_bug.cgi?id=41210>).
+feature is currently unsupported (L<WebKit bug #41210|https://bugs.webkit.org/show_bug.cgi?id=41210>).
 The current release of Safari has a bug in its handling of preflighted
-C<GET> requests (L<WebKit bug 50773|https://bugs.webkit.org/show_bug.cgi?id=50773>)
-which has been fixed in WebKit trunk and Chrome.  This module uses the
+C<GET> requests (L<WebKit bug #50773|https://bugs.webkit.org/show_bug.cgi?id=50773>)
+which has been fixed in WebKit v534.19 and Chrome 11.  This module uses the
 C<Referer> header to work around the issue when possible.
+
+Also provides the C<Origin> header for CSRF protection starting
+with WebKit v528.5 (Chrome 2, Safari 4).
 
 =item Internet Explorer
 
@@ -360,6 +375,13 @@ Not supported in any version of Opera.
 * L<XDomainRequest - Restrictions, Limitations and Workarounds|http://blogs.msdn.com/b/ieinternals/archive/2010/05/13/xdomainrequest-restrictions-limitations-and-workarounds.aspx>
 * L<Wikipedia - Cross-Origin Resource Sharing|http://en.wikipedia.org/wiki/Cross-Origin_Resource_Sharing>
 * L<CORS advocacy|http://enable-cors.org/>
+
+=head2 CSRF Resources
+
+* L<Wikipedia - Cross-site request forgery|http://en.wikipedia.org/wiki/Cross-site_request_forgery>
+* L<Stanford Web Security Research - Cross-Site Request Forgery|http://seclab.stanford.edu/websec/csrf/>
+* L<WebKit Bugzilla - Add origin header to POST requests|https://bugs.webkit.org/show_bug.cgi?id=20792>
+* L<Mozilla Bugzilla - Implement Origin header CSRF mitigation |https://bugzilla.mozilla.org/show_bug.cgi?id=446344>
 
 =head2 Related Technologies
 
