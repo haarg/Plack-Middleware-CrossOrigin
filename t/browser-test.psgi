@@ -123,12 +123,24 @@ builder {
         textarea, .url, .url * {
             font-family: monospace;
         }
+        #standard-form {
+            display: none;
+        }
+        iframe, textarea {
+            border: 1px solid #000;
+        }
     </style>
 </head>
 <body>
     <div>
+        <form id="standard-form" target="standard-form-submit" method="post"></form>
         <form id="cors-form">
             <div>Requesting from <span class="url">%s://<input type="text" id="request-host" value="%s" />%s</span></div>
+            <div>
+                Request Type :
+                <label><input type="radio" name="request-type" id="request-type-xhr" checked="checked" /> XMLHttpRequest</label>
+                <label><input type="radio" name="request-type" id="request-type-form" /> Form</label>
+            </div>
             <div>
                 <label>Method :
                     <select id="request-method">
@@ -148,22 +160,47 @@ builder {
             <div><input type="submit" value="Send Request" id="send-request" /></div>
             <hr />
             <div>Result Status: <span id="result-status"></span></div>
-            <div>Results: <div><textarea cols="100" rows="20" readonly="readonly" id="results"></textarea></div></div>
+            <div>Results: <div>
+                <textarea cols="100" rows="20" readonly="readonly" id="results"></textarea>
+                <iframe id="results-iframe" name="standard-form-submit" src="about:blank"></iframe>
+            </div></div>
         </form>
     </div>
     <script type="text/javascript">
         (function(){
             var form = document.getElementById('cors-form');
             var results = document.getElementById('results');
+            var resultsiframe = document.getElementById('results-iframe');
             var status = document.getElementById('result-status');
             var method = document.getElementById('request-method');
             var host = document.getElementById('request-host');
             var xrequestedwith = document.getElementById('x-requested-with');
             var xsomethingelse = document.getElementById('x-something-else');
+            var rt_xhr = document.getElementById('request-type-xhr');
+            var rt_form = document.getElementById('request-type-form');
+
+            var listen;
+            if (form.addEventListener) {
+                listen = function(el, ev, func) {
+                    el.addEventListener(ev, func, false);
+                };
+            }
+            else if (form.attachEvent) {
+                listen = function(el, ev, func) {
+                    el.attachEvent('on'+ev, func);
+                };
+            }
+
+            rt_xhr.checked = true;
+            method.disabled = false;
+            results.style.display = 'block';
+            resultsiframe.style.display = 'none';
 
             results.value = '';
+            var noheaders;
             if (typeof XMLHttpRequest != "undefined" && ("withCredentials" in ( new XMLHttpRequest() ) ) ) {}
             else if (typeof XDomainRequest != "undefined") {
+                noheaders = true;
                 xrequestedwith.disabled = true;
                 xrequestedwith.checked = false;
                 xsomethingelse.disabled = true;
@@ -182,90 +219,110 @@ builder {
                 e.returnValue = false;
                 results.value = '';
                 var request_address = "%1$s://"+host.value+"%3$s?no_cache="+(new Date()).getTime();
-                var xhr = new XMLHttpRequest();
-                if ("withCredentials" in xhr){
-                    xhr.open(method.value, request_address, true);
-                }
-                else if (typeof XDomainRequest != "undefined") {
-                    xhr = new XDomainRequest();
-                    try {
-                        xhr.open(method.value, request_address);
+                if (rt_xhr.checked) {
+                    var xhr = new XMLHttpRequest();
+                    if ("withCredentials" in xhr){
+                        xhr.open(method.value, request_address, true);
                     }
-                    catch(e) {
-                        status.innerHTML = 'Unsupported method';
-                        return;
-                    }
-                }
-                else {
-                    status.innerHTML = 'Unsupported browser';
-                    return;
-                }
-                if (xrequestedwith.checked) {
-                    xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
-                }
-                if (xsomethingelse.checked) {
-                    xhr.setRequestHeader('X-Something-Else', 'something-else');
-                }
-
-                var complete = function() {
-                    if (xhr.status == 200) {
-                        status.innerHTML = 'Success';
-                        results.value = xhr.responseText;
-                        if (xhr.getResponseHeader) {
-                            if (xhr.getResponseHeader('X-Some-Other-Header')) {
-                                results.value += "\nExtra header was exposed\n";
-                            }
-                            else {
-                                results.value += "\nExtra header was not exposed\n";
-                            }
+                    else if (typeof XDomainRequest != "undefined") {
+                        xhr = new XDomainRequest();
+                        try {
+                            xhr.open(method.value, request_address);
                         }
-                        else {
-                            results.value += "\nExtra headers are unsupported\n";
+                        catch(e) {
+                            status.innerHTML = 'Unsupported method';
+                            return;
                         }
                     }
                     else {
-                        status.innerHTML = 'Failure';
-                        var xhr2 = new XMLHttpRequest();
-                        xhr2.open('GET', '%4$s?no_cache='+(new Date()).getTime(), true);
-                        xhr2.onreadystatechange = function() {
-                            if (xhr2.readyState == 4) {
-                                results.value = xhr2.responseText;
-                            }
-                        };
-                        xhr2.send();
+                        status.innerHTML = 'Unsupported browser';
+                        return;
                     }
-                };
+                    if (xrequestedwith.checked) {
+                        xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+                    }
+                    if (xsomethingelse.checked) {
+                        xhr.setRequestHeader('X-Something-Else', 'something-else');
+                    }
 
-                if ('onreadystatechange' in xhr) {
-                    xhr.onreadystatechange = function() {
-                        if (xhr.readyState == 4) {
-                            complete();
+                    var complete = function() {
+                        if (xhr.status == 200) {
+                            status.innerHTML = 'Success';
+                            results.value = xhr.responseText;
+                            if (xhr.getResponseHeader) {
+                                if (xhr.getResponseHeader('X-Some-Other-Header')) {
+                                    results.value += "\nExtra header was exposed\n";
+                                }
+                                else {
+                                    results.value += "\nExtra header was not exposed\n";
+                                }
+                            }
+                            else {
+                                results.value += "\nExtra headers are unsupported\n";
+                            }
+                        }
+                        else {
+                            status.innerHTML = 'Failure';
+                            var xhr2 = new XMLHttpRequest();
+                            xhr2.open('GET', '%4$s?no_cache='+(new Date()).getTime(), true);
+                            xhr2.onreadystatechange = function() {
+                                if (xhr2.readyState == 4) {
+                                    results.value = xhr2.responseText;
+                                }
+                            };
+                            xhr2.send();
                         }
                     };
+
+                    if ('onreadystatechange' in xhr) {
+                        xhr.onreadystatechange = function() {
+                            if (xhr.readyState == 4) {
+                                complete();
+                            }
+                        };
+                    }
+                    // XDomainRequest uses different events and has no status property
+                    else if ('onload' in xhr) {
+                        xhr.onload = function() {
+                            xhr.status = 200;
+                            complete();
+                        };
+                        xhr.onerror = function() {
+                            xhr.status = 500;
+                            complete();
+                        };
+                    }
+                    status.innerHTML = 'Running';
+                    xhr.send();
+                    return false;
                 }
-                // XDomainRequest uses different events and has no status property
-                else if ('onload' in xhr) {
-                    xhr.onload = function() {
-                        xhr.status = 200;
-                        complete();
-                    };
-                    xhr.onerror = function() {
-                        xhr.status = 500;
-                        complete();
-                    };
+                else {
+                    var st_form = document.getElementById("standard-form");
+                    st_form.action = request_address;
+                    st_form.submit();
                 }
-                status.innerHTML = 'Running';
-                xhr.send();
-                return false;
             };
 
-            if (form.addEventListener) {
-                form.addEventListener('submit', formsubmit, false);
-            }
-            // we'll never get this far in old browsers but including it anyway
-            else if (form.attachEvent) {
-                form.attachEvent('onsubmit', formsubmit);
-            }
+            listen(form, 'submit', formsubmit);
+            listen(rt_xhr, 'click', function() {
+                method.disabled = false;
+                results.style.display = 'block';
+                resultsiframe.style.display = 'none';
+                if (! noheaders) {
+                    xrequestedwith.disabled = false;
+                    xsomethingelse.disabled = false;
+                }
+            });
+            listen(rt_form, 'click', function() {
+                method.value = 'POST';
+                method.disabled = true;
+                xrequestedwith.disabled = true;
+                xsomethingelse.disabled = true;
+                resultsiframe.width = results.clientWidth;
+                resultsiframe.height = results.clientHeight;
+                results.style.display = 'none';
+                resultsiframe.style.display = 'block';
+            });
         })();
     </script>
 </body>
