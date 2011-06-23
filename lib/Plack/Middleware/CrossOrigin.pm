@@ -12,6 +12,7 @@ use Plack::Util::Accessor qw(
     max_age
     expose_headers
     credentials
+    continue_on_failure
 );
 
 my @simple_headers = qw(
@@ -20,192 +21,182 @@ my @simple_headers = qw(
     Content-Language
     Last-Event-ID
 );
-my @simple_response_headers = (@simple_headers, qw(
+my @simple_response_headers = qw(
     Cache-Control
     Content-Language
     Content-Type
     Expires
     Last-Modified
     Pragma
+);
+my @common_headers = qw(
+    Cache-Control
+    Depth
+    If-Modified-Since
+    User-Agent
+    X-File-Name
+    X-File-Size
+    X-Requested-With
+    X-Prototype-Version
+);
+my @http_methods = qw(
+    GET
+    HEAD
+    POST
+);
+my @webdav_methods = (@http_methods, qw(
+    CANCELUPLOAD
+    CHECKIN
+    CHECKOUT
+    COPY
+    DELETE
+    GETLIB
+    LOCK
+    MKCOL
+    MOVE
+    OPTIONS
+    PROPFIND
+    PROPPATCH
+    PUT
+    REPORT
+    UNCHECKOUT
+    UNLOCK
+    UPDATE
+    VERSION-CONTROL
 ));
 
 sub prepare_app {
     my ($self) = @_;
 
-    $self->methods( [qw(
-        CANCELUPLOAD
-        CHECKIN
-        CHECKOUT
-        COPY
-        DELETE
-        GET
-        GETLIB
-        HEAD
-        LOCK
-        MKCOL
-        MOVE
-        OPTIONS
-        POST
-        PROPFIND
-        PROPPATCH
-        PUT
-        REPORT
-        UNCHECKOUT
-        UNLOCK
-        UPDATE
-        VERSION-CONTROL
-    )] )
-        unless defined $self->methods;
+    $self->origins([$self->origins || ()])
+        unless ref $self->origins;
 
-    $self->headers( [qw(
-        Cache-Control
-        Depth
-        If-Modified-Since
-        User-Agent
-        X-File-Name
-        X-File-Size
-        X-Requested-With
-        X-Prototype-Version
-    )])
-        unless defined $self->headers;
-}
+    $self->methods([$self->methods || @webdav_methods])
+        unless ref $self->methods;
 
-sub _origins {
-    my $self = shift;
-    return ref $self->origins ? @{ $self->origins } : $self->origins || ();
-}
+    $self->headers([$self->headers || @common_headers])
+        unless ref $self->headers;
 
-sub _methods {
-    my $self = shift;
-    return ref $self->methods ? @{ $self->methods } : $self->methods || ();
-}
+    $self->expose_headers([$self->expose_headers || ()])
+        unless ref $self->expose_headers;
 
-sub _headers {
-    my $self = shift;
-    return ref $self->headers ? @{ $self->headers } : $self->headers || ();
-}
-
-sub _expose_headers {
-    my $self = shift;
-    return ref $self->expose_headers ? @{ $self->expose_headers } : $self->expose_headers || ();
+    $self->{origins_h} = { map { $_ => 1 } @{ $self->origins } };
+    $self->{methods_h} = { map { $_ => 1 } @{ $self->methods } };
+    $self->{headers_h} = { map { lc $_ => 1 } @{ $self->headers } };
+    $self->{expose_headers_h} = { map { $_ => 1 } @{ $self->expose_headers } };
 }
 
 sub call {
     my ($self, $env) = @_;
-    if (my $origin = $env->{HTTP_ORIGIN}) {
-        my @origins = split / /, $origin;
-        my $request_method = $env->{HTTP_ACCESS_CONTROL_REQUEST_METHOD};
-        my $request_headers = $env->{HTTP_ACCESS_CONTROL_REQUEST_HEADERS};
-        my @request_headers = $request_headers ? (split /,\s*/, $request_headers) : ();
-
-        my $preflight = $env->{REQUEST_METHOD} eq 'OPTIONS' && $request_method;
-
-        my %allowed_origins = map { $_ => 1 } $self->_origins;
-        my @allowed_methods = $self->_methods;
-        my %allowed_methods = map { $_ => 1 } @allowed_methods;
-        my @allowed_headers = $self->_headers;
-        my %allowed_headers = map { lc $_ => 1 } @allowed_headers;
-        my @expose_headers = $self->_expose_headers;
-        my %expose_headers = map { $_ => 1 } @expose_headers;
-
-        my @headers;
-
-        if (! $allowed_origins{'*'} ) {
-            for my $origin (@origins) {
-                return _return_403()
-                    unless $allowed_origins{$origin};
-            }
-        }
-
-        if ($preflight) {
-            unless ( $allowed_methods{'*'} || $allowed_methods{$request_method} ) {
-                return _return_403();
-            }
-            if (! $allowed_headers{'*'} ) {
-                for my $header (@request_headers) {
-                    return _return_403()
-                        unless $allowed_headers{lc $header};
-                }
-            }
-        }
-        if ($self->credentials) {
-            push @headers, 'Access-Control-Allow-Credentials' => 'true';
-        }
-        elsif ($allowed_origins{'*'}) {
-            $origin = '*';
-        }
-        push @headers, 'Access-Control-Allow-Origin' => $origin;
-
-        my $res;
-        if ($preflight) {
-            if ($allowed_methods{'*'}) {
-                @allowed_methods = $request_method;
-            }
-            if ( $allowed_headers{'*'} ) {
-                @allowed_headers = @request_headers;
-            }
-
-            if (defined $self->max_age) {
-                push @headers, 'Access-Control-Max-Age' => $self->max_age;
-            }
-            push @headers, 'Access-Control-Allow-Methods' => $_
-                for @allowed_methods;
-            push @headers, 'Access-Control-Allow-Headers' => $_
-                for @allowed_headers;
-
-            $res = [200, [ 'Content-Type' => 'text/plain' ], [] ];
-        }
-        else {
-            $res = $self->app->($env);
-        }
-
-        return $self->response_cb($res, sub {
-            my $res = shift;
-
-            if ($expose_headers{'*'}) {
-                my %headers = @{ $res->[1] };
-                delete @headers{@simple_response_headers};
-                @expose_headers = keys %headers;
-            }
-
-            push @headers, 'Access-Control-Expose-Headers' => $_
-                for @expose_headers;
-
-            push @{$res->[1]}, @headers;
-        });
+    my $origin = $env->{HTTP_ORIGIN};
+    my $continue_on_failure;
+    if ($origin) {
+        $continue_on_failure = $self->continue_on_failure;
     }
-    # for preflighted GET requests, some WebKit versions don't include Origin
-    # with the actual request.  Fixed in WebKit trunk and Chrome.  Current
-    # releases of Safari still suffer from the issue.
+    # for preflighted GET requests, some WebKit versions don't
+    # include Origin with the actual request.  Fixed in WebKit trunk
+    # and Chrome.  Current releases of Safari still suffer from the
+    # issue.  Work around it using the Referer header.
     # https://bugs.webkit.org/show_bug.cgi?id=50773
     # http://code.google.com/p/chromium/issues/detail?id=57836
     elsif ($env->{REQUEST_METHOD} eq 'GET'
         && $env->{HTTP_USER_AGENT}
         && $env->{HTTP_USER_AGENT} =~ m{\bAppleWebKit/(\d+\.\d+)}
-        && $1 < 534.19) {
-        my $origin_header;
-        # transforming the referrer into the origin is the best we can do
-        my ( $origin ) = ( $env->{HTTP_REFERER} =~ m{\A ( \w+://[^/]+ )}msx );
-        my %allowed_origins = map { $_ => 1 } $self->_origins;
-        if ( $allowed_origins{'*'} ) {
-            $origin_header = '*';
+        && $1 < 534.19
+        && $env->{HTTP_REFERER} =~ m{\A ( \w+://[^/]+ )}msx
+    ) {
+        $origin = $1;
+        $continue_on_failure = 1;
+    }
+    else {
+        return $self->app->($env);
+    }
+
+    my @origins = split / /, $origin;
+    my $request_method  = $env->{HTTP_ACCESS_CONTROL_REQUEST_METHOD};
+    my $request_headers = $env->{HTTP_ACCESS_CONTROL_REQUEST_HEADERS};
+    my @request_headers = $request_headers ? (split /,\s*/, $request_headers) : ();
+    my $preflight       = $env->{REQUEST_METHOD} eq 'OPTIONS' && $request_method;
+
+    my $fail = $continue_on_failure && !$preflight ? $self->app : \&_response_forbidden;
+
+    my $allowed_origins_h   = $self->{origins_h};
+    my $allowed_methods     = $self->methods;
+    my $allowed_methods_h   = $self->{methods_h};
+    my $allowed_headers     = $self->headers;
+    my $allowed_headers_h   = $self->{headers_h};
+    my $expose_headers      = $self->expose_headers;
+    my $expose_headers_h    = $self->{expose_headers_h};
+
+    my @headers;
+
+    if ($allowed_origins_h->{'*'} ) {
+        # allow request to proceed
+    }
+    elsif ( grep { ! defined } @{$allowed_origins_h}{@origins} ) {
+        return $fail->($env);
+    }
+
+    if ($preflight) {
+        if ( $allowed_methods_h->{'*'} ) {
+            $allowed_methods = [$request_method];
         }
-        elsif ($origin && $allowed_origins{$origin} ) {
-            $origin_header = $origin;
+        elsif ( ! $allowed_methods_h->{$request_method} ) {
+            return _response_forbidden();
         }
-        if ($origin_header) {
-            return $self->response_cb($self->app->($env), sub {
-                my $res = shift;
-                push @{$res->[1]}, 'Access-Control-Allow-Origin' => $origin_header;
-            });
+        if ( $allowed_headers_h->{'*'} ) {
+            $allowed_headers = \@request_headers;
+        }
+        elsif ( grep { ! defined } @{$allowed_headers_h}{map lc, @request_headers} ) {
+            return _response_forbidden();
         }
     }
-    return $self->app->($env);
+    if ($self->credentials) {
+        push @headers, 'Access-Control-Allow-Credentials' => 'true';
+    }
+    elsif ($allowed_origins_h->{'*'}) {
+        $origin = '*';
+    }
+    push @headers, 'Access-Control-Allow-Origin' => $origin;
+
+    my $res;
+    if ($preflight) {
+        if (defined $self->max_age) {
+            push @headers, 'Access-Control-Max-Age' => $self->max_age;
+        }
+        push @headers, 'Access-Control-Allow-Methods' => $_
+            for @$allowed_methods;
+        push @headers, 'Access-Control-Allow-Headers' => $_
+            for @$allowed_headers;
+
+        $res = _response_success();
+    }
+    else {
+        $res = $self->app->($env);
+    }
+
+    return $self->response_cb($res, sub {
+        my $res = shift;
+
+        if ($expose_headers_h->{'*'}) {
+            my %headers = @{ $res->[1] };
+            delete @headers{@simple_response_headers};
+            $expose_headers = [keys %headers];
+        }
+
+        push @headers, 'Access-Control-Expose-Headers' => $_
+            for @$expose_headers;
+
+        push @{ $res->[1] }, @headers;
+    });
 }
 
-sub _return_403 {
-    my $self = shift;
-    return [403, ['Content-Type' => 'text/plain', 'Content-Length' => 9], ['forbidden']];
+sub _response_forbidden {
+    [403, ['Content-Type' => 'text/plain', 'Content-Length' => 9], ['forbidden']];
+}
+
+sub _response_success {
+    [200, [ 'Content-Type' => 'text/plain' ], [] ];
 }
 
 1;
@@ -319,6 +310,12 @@ Whether the resource will be allowed with user credentials (cookies,
 HTTP authentication, and client-side SSL certificates) supplied.
 Controls the C<Access-Control-Allow-Credentials> response header.
 
+=item continue_on_failure
+
+Normally, simple requests with an Origin that hasn't been allowed will be stopped before they continue to the main app.  If this option is set, the request will be allowed to continue, but no CORS headers will be added to the response.  This matches how non-allowed requests would be handled if this module was not used at all.
+
+This disabled the CSRF protection and is not recommended.  It could be needed for applications that need to allow cross-origin HTML form C<POST>s without whitelisting domains.
+
 =back
 
 =head1 BROWSER SUPPORT
@@ -382,7 +379,7 @@ Not supported in any version of Opera.
 * L<Wikipedia - Cross-site request forgery|http://en.wikipedia.org/wiki/Cross-site_request_forgery>
 * L<Stanford Web Security Research - Cross-Site Request Forgery|http://seclab.stanford.edu/websec/csrf/>
 * L<WebKit Bugzilla - Add origin header to POST requests|https://bugs.webkit.org/show_bug.cgi?id=20792>
-* L<Mozilla Bugzilla - Implement Origin header CSRF mitigation |https://bugzilla.mozilla.org/show_bug.cgi?id=446344>
+* L<Mozilla Bugzilla - Implement Origin header CSRF mitigation|https://bugzilla.mozilla.org/show_bug.cgi?id=446344>
 
 =head2 Related Technologies
 

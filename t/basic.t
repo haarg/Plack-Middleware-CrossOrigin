@@ -188,6 +188,48 @@ test_psgi
         $res = $cb->($req);
         is $res->code, 403, 'Disallowed simple request returns 403 error';
         ok ! $has_run, ' ... and aborts before running main app';
+
+        $has_run = 0;
+        $req = HTTP::Request->new(GET => 'http://localhost/', [
+            'Referer' => 'http://www.example.com/page',
+            'User-Agent' => 'AppleWebKit/534.16',
+        ]);
+        $res = $cb->($req);
+        ok $has_run, 'WebKit workaround always allows app to run';
+    };
+
+test_psgi
+    app => builder {
+        enable 'CrossOrigin',
+            origins => 'http://localhost',
+            continue_on_failure => 1,
+        ;
+        sub {
+            $has_run = 1;
+            [ 200, [ 'Content-Type' => 'text/plain' ], [ 'Hello World' ] ];
+        };
+    },
+    client => sub {
+        my $cb = shift;
+        my $req;
+        my $res;
+
+        $has_run = 0;
+        $req = HTTP::Request->new(POST => 'http://localhost/', [
+            'Origin' => 'http://www.example.com',
+        ]);
+        $res = $cb->($req);
+        ok $has_run, 'continue_on_failure allows main app to run for simple requests';
+        is $res->code, 200, ' ... and passes through results';
+        is $res->header('Access-Control-Allow-Origin'), undef, ' ... and doesn\'t add headers to allow CORS';
+
+        $has_run = 0;
+        $req = HTTP::Request->new(OPTIONS => 'http://localhost/', [
+            'Access-Control-Request-Method' => 'POST',
+            'Origin' => 'http://www.example.com',
+        ]);
+        $res = $cb->($req);
+        ok ! $has_run, 'continue_on_failure doesn\'t run main app for preflighted request';
     };
 
 done_testing;
