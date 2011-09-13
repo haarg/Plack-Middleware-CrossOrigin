@@ -94,9 +94,9 @@ sub call {
         $continue_on_failure = $self->continue_on_failure;
     }
     # for preflighted GET requests, some WebKit versions don't
-    # include Origin with the actual request.  Fixed in WebKit trunk
-    # and Chrome.  Current releases of Safari still suffer from the
-    # issue.  Work around it using the Referer header.
+    # include Origin with the actual request.  Fixed in current versions
+    # of WebKit, Chrome, and Safari.
+    # Work around it using the Referer header.
     # https://bugs.webkit.org/show_bug.cgi?id=50773
     # http://code.google.com/p/chromium/issues/detail?id=57836
     elsif ($env->{REQUEST_METHOD} eq 'GET'
@@ -312,9 +312,15 @@ Controls the C<Access-Control-Allow-Credentials> response header.
 
 =item continue_on_failure
 
-Normally, simple requests with an Origin that hasn't been allowed will be stopped before they continue to the main app.  If this option is set, the request will be allowed to continue, but no CORS headers will be added to the response.  This matches how non-allowed requests would be handled if this module was not used at all.
+Normally, simple requests with an Origin that hasn't been allowed
+will be stopped before they continue to the main app.  If this
+option is set, the request will be allowed to continue, but no CORS
+headers will be added to the response.  This matches how non-allowed
+requests would be handled if this module was not used at all.
 
-This disabled the CSRF protection and is not recommended.  It could be needed for applications that need to allow cross-origin HTML form C<POST>s without whitelisting domains.
+This disables the CSRF protection and is not recommended.  It could
+be needed for applications that need to allow cross-origin HTML
+form C<POST>s without whitelisting domains.
 
 =back
 
