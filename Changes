@@ -2,6 +2,11 @@ Revision history for Plack-Middleware-CrossOrigin
 
 {{$NEXT}}
 
+0.007     Sep 12 2011
+ - Add continue_on_failure to allow requests to be processed as if the module was not used.
+ - Note required version of Test::More
+ - Fix POD formatting
+
 0.006     Jun 16 2011
  - Only apply WebKit workaround to older versions
  - additional documentation and references, including notes on CSRF
