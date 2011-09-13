@@ -13,6 +13,7 @@ use Plack::Util::Accessor qw(
     expose_headers
     credentials
     continue_on_failure
+    flash
 );
 
 my @simple_headers = qw(
@@ -84,12 +85,19 @@ sub prepare_app {
     $self->{methods_h} = { map { $_ => 1 } @{ $self->methods } };
     $self->{headers_h} = { map { lc $_ => 1 } @{ $self->headers } };
     $self->{expose_headers_h} = { map { $_ => 1 } @{ $self->expose_headers } };
+    if ($self->flash) {
+        require Plack::App::CrossDomainXML;
+        $self->{flash_app} = Plack::App::CrossDomainXML->new(allow_access_from => $self->origins)->to_app;
+    }
 }
 
 sub call {
     my ($self, $env) = @_;
     my $origin = $env->{HTTP_ORIGIN};
     my $continue_on_failure;
+    if ($env->{PATH_INFO} eq '/crossdomain.xml' && $self->{flash_app}) {
+        return $self->{flash_app}->($env);
+    }
     if ($origin) {
         $continue_on_failure = $self->continue_on_failure;
     }
@@ -321,6 +329,12 @@ requests would be handled if this module was not used at all.
 This disables the CSRF protection and is not recommended.  It could
 be needed for applications that need to allow cross-origin HTML
 form C<POST>s without whitelisting domains.
+
+=item flash
+
+If specified, a file F<crossdomain.xml> will be served, with rules
+matching those specified as close as possible.  Currently only
+supports the allowed origins.
 
 =back
 
