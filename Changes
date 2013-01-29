@@ -1,6 +1,8 @@
 Revision history for Plack-Middleware-CrossOrigin
 
 {{$NEXT}}
+
+0.008     Jan 29 2013
  - Updated browser support documentation.
 
 0.007     Sep 12 2011
