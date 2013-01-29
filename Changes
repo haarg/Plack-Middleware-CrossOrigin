@@ -1,6 +1,7 @@
 Revision history for Plack-Middleware-CrossOrigin
 
 {{$NEXT}}
+ - Updated browser support documentation.
 
 0.007     Sep 12 2011
  - Add continue_on_failure to allow requests to be processed as if the module was not used.
