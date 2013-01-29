@@ -19,7 +19,6 @@ my @simple_headers = qw(
     Accept
     Accept-Language
     Content-Language
-    Last-Event-ID
 );
 my @simple_response_headers = qw(
     Cache-Control
