@@ -340,12 +340,13 @@ Does not yet provide the C<Origin> header for CSRF protection
 
 =item WebKit (Safari, Google Chrome)
 
-Initially supported in Safari 4 and Chrome 3.  The C<expose_headers>
-feature is currently unsupported (L<WebKit bug #41210|https://bugs.webkit.org/show_bug.cgi?id=41210>).
-The current release of Safari has a bug in its handling of preflighted
-C<GET> requests (L<WebKit bug #50773|https://bugs.webkit.org/show_bug.cgi?id=50773>)
-which has been fixed in WebKit v534.19 and Chrome 11.  This module uses the
-C<Referer> header to work around the issue when possible.
+Initially supported in Safari 4 and Chrome 3. Supports the complete
+CORS spec.
+
+The C<expose_headers> feature has been supported since WebKit v535.18
+(Safari 6, Chrome 18). Preflighted requests were buggy prior to
+WebKit v534.19 (Safari 5.1, Chrome 11), but this module uses a
+workaround where possible (using the C<Referer> header).
 
 Also provides the C<Origin> header for CSRF protection starting
 with WebKit v528.5 (Chrome 2, Safari 4).
@@ -359,9 +360,11 @@ extra headers can be added to the request.  Neither the status code
 or any headers aside from C<Content-Type> can be retrieved from the
 response.
 
+IE10 supports CORS via the standard C<XMLHttpRequest> object.
+
 =item Opera
 
-Not supported in any version of Opera.
+Opera and Opera Mobile support CORS since version 12.
 
 =back
 
