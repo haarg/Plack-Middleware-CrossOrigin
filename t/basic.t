@@ -67,6 +67,14 @@ test_psgi
         $res = $cb->($req);
         is $res->header('Access-Control-Allow-Origin'), undef, 'New versions of WebKit don\'t trigger referer workaround';
 
+        my @warnings;
+        local $SIG{__WARN__} = sub { push @warnings, join '', @_ };
+        $req = HTTP::Request->new(GET => 'http://localhost/', [
+            'User-Agent' => 'AppleWebKit/534.16',
+        ]);
+        $res = $cb->($req);
+        is $res->header('Access-Control-Allow-Origin'), undef, 'Buggy GET request from WebKit without Referer does not include Allow-Origin header';
+        is_deeply \@warnings, [], 'No warnings from buggy WebKit request';
     };
 
 test_psgi
