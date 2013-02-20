@@ -102,6 +102,7 @@ sub call {
         && $env->{HTTP_USER_AGENT}
         && $env->{HTTP_USER_AGENT} =~ m{\bAppleWebKit/(\d+\.\d+)}
         && $1 < 534.19
+        && $env->{HTTP_REFERER}
         && $env->{HTTP_REFERER} =~ m{\A ( \w+://[^/]+ )}msx
     ) {
         $origin = $1;
