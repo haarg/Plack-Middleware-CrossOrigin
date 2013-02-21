@@ -1,6 +1,8 @@
 Revision history for Plack-Middleware-CrossOrigin
 
 {{$NEXT}}
+
+0.009     Feb 20 2013
  - Suppress warnings when checking for buggy WebKit browsers. (Dave Rolsky)
 
 0.008     Jan 29 2013
