@@ -112,7 +112,6 @@ sub call {
         return $self->app->($env);
     }
 
-    my @origins = split / /, $origin;
     my $request_method  = $env->{HTTP_ACCESS_CONTROL_REQUEST_METHOD};
     my $request_headers = $env->{HTTP_ACCESS_CONTROL_REQUEST_HEADERS};
     my @request_headers = $request_headers ? (split /,\s*/, $request_headers) : ();
@@ -133,7 +132,7 @@ sub call {
     if ($allowed_origins_h->{'*'} ) {
         # allow request to proceed
     }
-    elsif ( grep { ! defined } @{$allowed_origins_h}{@origins} ) {
+    elsif ( ! $allowed_origins_h->{$origin} ) {
         return $fail->($env);
     }
 
