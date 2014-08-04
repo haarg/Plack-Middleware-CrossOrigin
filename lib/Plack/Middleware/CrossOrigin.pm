@@ -1,7 +1,9 @@
 use strict;
 use warnings;
 package Plack::Middleware::CrossOrigin;
+
 # ABSTRACT: Adds headers to allow Cross-Origin Resource Sharing
+use 5.008;
 use parent qw(Plack::Middleware);
 
 use Plack::Util;
