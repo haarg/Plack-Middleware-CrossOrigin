@@ -240,4 +240,43 @@ test_psgi
         ok ! $has_run, 'continue_on_failure doesn\'t run main app for preflighted request';
     };
 
+{
+   # Test that the access control headers are returned as single headers
+   # with comma-separated values. IE 11 (at least) appears to only evaluate
+   # the first 'Access-Control-Allow-Headers' header.
+   #
+   # We can't use test_psgi for this test because after the PSGI response
+   # is parsed by HTTP::Response we can no longer tell how the headers were
+   # actually formatted.
+   my $app = builder {
+        enable 'CrossOrigin',
+            origins => [ 'http://www.example.com' ],
+            methods => ['GET', 'POST'],
+            headers => ['X-Extra-Header', 'X-Extra-Header-2'],
+            expose_headers => ['X-Exposed-Header', 'X-Exposed-Header2'],
+        ;
+        sub { [ 200, [
+            'Content-Type' => 'text/plain',
+        ], [ 'Hello World' ] ] };
+    };
+
+   my $req = HTTP::Request->new(OPTIONS => 'http://localhost/', [
+      'Access-Control-Request-Method' => 'POST',
+      'Origin' => 'http://www.example.com',
+   ]);
+
+   my $res = $app->($req->to_psgi);
+   is_deeply($res, [
+      200,
+      [
+         'Content-Type'                  => 'text/plain',
+         'Access-Control-Allow-Origin'   => 'http://www.example.com',
+         'Access-Control-Allow-Methods'  => 'GET, POST',
+         'Access-Control-Allow-Headers'  => 'X-Extra-Header, X-Extra-Header-2',
+         'Access-Control-Expose-Headers' => 'X-Exposed-Header, X-Exposed-Header2'
+      ],
+      []
+   ], 'headers returned as comma separated values for the benenfit of IE');
+}
+
 done_testing;
