@@ -165,10 +165,8 @@ sub call {
         if (defined $self->max_age) {
             push @headers, 'Access-Control-Max-Age' => $self->max_age;
         }
-        push @headers, 'Access-Control-Allow-Methods' => $_
-            for @$allowed_methods;
-        push @headers, 'Access-Control-Allow-Headers' => $_
-            for @$allowed_headers;
+        push @headers, 'Access-Control-Allow-Methods' => join ', ', @$allowed_methods;
+        push @headers, 'Access-Control-Allow-Headers' => join ', ', @$allowed_headers;
 
         $res = _response_success();
     }
@@ -185,8 +183,7 @@ sub call {
             $expose_headers = [keys %headers];
         }
 
-        push @headers, 'Access-Control-Expose-Headers' => $_
-            for @$expose_headers;
+        push @headers, 'Access-Control-Expose-Headers' => join ', ', @$expose_headers;
 
         push @{ $res->[1] }, @headers;
     });
