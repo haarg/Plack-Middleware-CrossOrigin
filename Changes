@@ -1,8 +1,11 @@
 Revision history for Plack-Middleware-CrossOrigin
 
 {{$NEXT}}
+ - Include real change log entry for 0.011
 
 0.011     Dec 07 2014
+ - Use single comma separated headers rather than multiple headers for better
+   compatibility with IE
 
 0.010     Aug 15 2014
  - updated to match spec, with only one origin
