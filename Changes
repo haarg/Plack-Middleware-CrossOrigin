@@ -2,6 +2,7 @@ Revision history for Plack-Middleware-CrossOrigin
 
   - Allow using wildcards inside origins to match partial host names
   - Convert packaging from Dist::Zilla to Distar
+  - Always add a "Vary: Origin" header to avoid issues with caches
 
 0.012     Dec 07 2014
   - Include real change log entry for 0.011
