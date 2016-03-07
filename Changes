@@ -1,6 +1,7 @@
 Revision history for Plack-Middleware-CrossOrigin
 
 {{$NEXT}}
+ - Always add a "Vary: Origin" header to avoid issues with caches
 
 0.012     Dec 07 2014
  - Include real change log entry for 0.011
