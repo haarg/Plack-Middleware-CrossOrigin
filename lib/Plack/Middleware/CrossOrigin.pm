@@ -242,6 +242,9 @@ This module attempts to fully conform to the CORS spec, while
 allowing additional flexibility in the values specified for the of
 the headers.
 
+The module also ensures that the response contains a C<Vary: Origin>
+header to avoid potential issues with caches.
+
 =head1 CORS REQUESTS IN BRIEF
 
 There are two types of CORS requests.  Simple requests, and preflighted
@@ -390,6 +393,7 @@ Opera and Opera Mobile support CORS since version 12.
 
 =for :list
 * L<W3C Spec for Cross-Origin Resource Sharing|http://www.w3.org/TR/cors/>
+* L<W3C Spec for Cross-Origin Resource Sharing - Implementation Considerations|http://www.w3.org/TR/cors/#resource-implementation>
 * L<Mozilla Developer Center - HTTP Access Control|https://developer.mozilla.org/En/HTTP_access_control>
 * L<Mozilla Developer Center - Server-Side Access Control|https://developer.mozilla.org/En/Server-Side_Access_Control>
 * L<Cross browser examples of using CORS requests|http://www.nczonline.net/blog/2010/05/25/cross-domain-ajax-with-cross-origin-resource-sharing/>
