@@ -138,7 +138,11 @@ sub call {
         $continue_on_failure = 1;
     }
     else {
-        return $self->app->($env);
+        return Plack::Util::response_cb($self->app->($env), sub {
+            my $res = shift;
+            _add_vary($res->[1]);
+            return;
+        });
     }
 
     my $request_method  = $env->{HTTP_ACCESS_CONTROL_REQUEST_METHOD};
@@ -159,7 +163,11 @@ sub call {
     my @headers;
 
     if (not ($allowed_origins_h->{'*'} || $origin =~ $self->{origins_re} ) ) {
-        return $fail->($env);
+        return Plack::Util::response_cb($fail->($env), sub {
+            my $res = shift;
+            _add_vary($res->[1]);
+            return;
+        });
     }
 
     if ($preflight) {
@@ -201,6 +209,7 @@ sub call {
     return $self->response_cb($res, sub {
         my $res = shift;
 
+        _add_vary($res->[1]);
         if ($expose_headers_h->{'*'}) {
             my %headers = @{ $res->[1] };
             delete @headers{@simple_response_headers};
@@ -214,11 +223,20 @@ sub call {
 }
 
 sub _response_forbidden {
-    [403, ['Content-Type' => 'text/plain', 'Content-Length' => 9], ['forbidden']];
+    [403, ['Content-Type' => 'text/plain', 'Content-Length' => 9, 'Vary' => 'Origin'], ['forbidden']];
 }
 
 sub _response_success {
     [200, [ 'Content-Type' => 'text/plain' ], [] ];
+}
+
+sub _add_vary {
+    my ($headers) = @_;
+
+    unless (grep { m{^\s*Origin\s*$}i } map { split /,/ } Plack::Util::header_get($headers, 'Vary')) {
+        push @{ $headers }, 'Vary' => 'Origin';
+    }
+    return;
 }
 
 1;
