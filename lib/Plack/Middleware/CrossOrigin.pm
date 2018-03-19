@@ -42,12 +42,25 @@ my @common_headers = qw(
     X-Requested-With
     X-Prototype-Version
 );
+
+# RFC 7231
 my @http_methods = qw(
     GET
     HEAD
     POST
+    PUT
+    DELETE
+    CONNECT
+    OPTIONS
+    TRACE
 );
-my @webdav_methods = (@http_methods, qw(
+
+# RFC 5789
+my @rfc_5789_methods = qw(
+    PATCH
+);
+
+my @webdav_methods = qw(
     CANCELUPLOAD
     CHECKIN
     CHECKOUT
@@ -66,7 +79,9 @@ my @webdav_methods = (@http_methods, qw(
     UNLOCK
     UPDATE
     VERSION-CONTROL
-));
+);
+
+my @all_methods = ( @http_methods, @rfc_5789_methods, @webdav_methods );
 
 sub prepare_app {
     my ($self) = @_;
@@ -74,7 +89,7 @@ sub prepare_app {
     $self->origins([$self->origins || ()])
         unless ref $self->origins;
 
-    $self->methods([$self->methods || @webdav_methods])
+    $self->methods([$self->methods || @all_methods])
         unless ref $self->methods;
 
     $self->headers([$self->headers || @common_headers])
