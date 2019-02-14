@@ -303,7 +303,7 @@ with WebDAV and AJAX frameworks:
 
 =item methods
 
-A list of allowed methods.  '*' can be specified to allow any
+A list of allowed methods.  'C<*>' can be specified to allow any
 methods.  Controls the C<Access-Control-Allow-Methods> response
 header.  Defaults to all of the standard HTTP and WebDAV methods.
 
@@ -315,7 +315,7 @@ the web browser will decide how long to use.
 
 =item expose_headers
 
-A list of allowed headers to expose to the client. '*' can be
+A list of allowed headers to expose to the client. 'C<*>' can be
 specified to allow the browser to see all of the response headers.
 Controls the C<Access-Control-Expose-Headers> response header.
 
