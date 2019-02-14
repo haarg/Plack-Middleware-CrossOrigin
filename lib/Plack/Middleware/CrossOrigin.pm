@@ -1,6 +1,9 @@
+package Plack::Middleware::CrossOrigin;
 use strict;
 use warnings;
-package Plack::Middleware::CrossOrigin;
+
+our $VERSION = '0.012';
+$VERSION =~ tr/_//d;
 
 use 5.008;
 use parent qw(Plack::Middleware);
