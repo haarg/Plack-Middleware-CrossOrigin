@@ -279,4 +279,39 @@ test_psgi
    ], 'headers returned as comma separated values for the benenfit of IE');
 }
 
+test_psgi
+    app => builder {
+        enable 'CrossOrigin',
+            origins => [ 'http://*.example.com' ],
+        ;
+        sub { [ 200, [
+            'Content-Type' => 'text/plain',
+        ], [ 'Hello World' ] ] };
+    },
+    client => sub {
+        my $cb = shift;
+        my $req;
+        my $res;
+
+        $req = HTTP::Request->new(GET => 'http://localhost/', [
+            'Access-Control-Request-Method' => 'GET',
+            'Origin' => 'http://www.example.com',
+        ]);
+        $res = $cb->($req);
+
+        is $res->header('Access-Control-Allow-Origin'), 'http://www.example.com',
+          'wildcard as partial domain allowed';
+
+        $req = HTTP::Request->new(GET => 'http://localhost/', [
+            'Access-Control-Request-Method' => 'GET',
+            'Origin' => 'http://www.example2.com',
+        ]);
+        $res = $cb->($req);
+
+        ok !$res->header('Access-Control-Allow-Origin'),
+          'non-matching origin not allowed with wildcard';
+
+    },
+;
+
 done_testing;

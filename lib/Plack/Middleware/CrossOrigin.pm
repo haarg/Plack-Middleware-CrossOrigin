@@ -84,6 +84,16 @@ sub prepare_app {
         unless ref $self->expose_headers;
 
     $self->{origins_h} = { map { $_ => 1 } @{ $self->origins } };
+    ($self->{origins_re}) =
+        map qr/\A(?:$_)\z/,
+        join '|',
+        map +(
+            join '[a-z.-]*',
+            map quotemeta,
+            split /\*/, $_, -1
+        ),
+        @{ $self->origins };
+
     $self->{methods_h} = { map { $_ => 1 } @{ $self->methods } };
     $self->{headers_h} = { map { lc $_ => 1 } @{ $self->headers } };
     $self->{expose_headers_h} = { map { $_ => 1 } @{ $self->expose_headers } };
@@ -133,10 +143,7 @@ sub call {
 
     my @headers;
 
-    if ($allowed_origins_h->{'*'} ) {
-        # allow request to proceed
-    }
-    elsif ( ! $allowed_origins_h->{$origin} ) {
+    if (not ($allowed_origins_h->{'*'} || $origin =~ $self->{origins_re} ) ) {
         return $fail->($env);
     }
 
@@ -268,11 +275,12 @@ the rest of your Plack application.
 
 A list of allowed origins.  Origins should be formatted as a URL
 scheme and host, with no path information. (C<http://www.example.com>)
-'C<*>' can be specified to allow access from any location.  Must be
-specified for this middleware to have any effect.  This will be
-matched against the C<Origin> request header, and will control the
-C<Access-Control-Allow-Origin> response header.  If the origin does
-not match, the request is aborted.
+'C<*>' can be specified to allow access from any location.  Wildcards
+(C<*>) can also be included in in the host to match any part of a host name
+(e.g. C<https://*.example.com>).  At least one origin must bust be specified
+for this middleware to have any effect.  This will be matched against the
+C<Origin> request header, and will control the C<Access-Control-Allow-Origin>
+response header.  If the origin does not match, the request is aborted.
 
 =item headers
 
