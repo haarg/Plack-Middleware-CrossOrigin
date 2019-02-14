@@ -2,7 +2,6 @@ use strict;
 use warnings;
 package Plack::Middleware::CrossOrigin;
 
-# ABSTRACT: Adds headers to allow Cross-Origin Resource Sharing
 use 5.008;
 use parent qw(Plack::Middleware);
 
@@ -198,6 +197,11 @@ sub _response_success {
 }
 
 1;
+__END__
+
+=head1 NAME
+
+Plack::Middleware::CrossOrigin - Adds headers to allow Cross-Origin Resource Sharing
 
 =head1 SYNOPSIS
 
@@ -206,7 +210,7 @@ sub _response_success {
         enable 'CrossOrigin', origins => '*';
         $app;
     };
-    
+
     # Allow GET and POST requests from any location, cache results for 30 days.
     builder {
         enable 'CrossOrigin',
@@ -274,15 +278,25 @@ any headers.  Controls the C<Access-Control-Allow-Headers> response
 header.  Includes a set of headers by default to simplify working
 with WebDAV and AJAX frameworks:
 
-=for :list
-* C<Cache-Control>
-* C<Depth>
-* C<If-Modified-Since>
-* C<User-Agent>
-* C<X-File-Name>
-* C<X-File-Size>
-* C<X-Prototype-Version>
-* C<X-Requested-With>
+=over 4
+
+=item * C<Cache-Control>
+
+=item * C<Depth>
+
+=item * C<If-Modified-Since>
+
+=item * C<User-Agent>
+
+=item * C<X-File-Name>
+
+=item * C<X-File-Size>
+
+=item * C<X-Prototype-Version>
+
+=item * C<X-Requested-With>
+
+=back
 
 =item methods
 
@@ -370,29 +384,77 @@ Opera and Opera Mobile support CORS since version 12.
 
 =head2 CORS Resources
 
-=for :list
-* L<W3C Spec for Cross-Origin Resource Sharing|http://www.w3.org/TR/cors/>
-* L<Mozilla Developer Center - HTTP Access Control|https://developer.mozilla.org/En/HTTP_access_control>
-* L<Mozilla Developer Center - Server-Side Access Control|https://developer.mozilla.org/En/Server-Side_Access_Control>
-* L<Cross browser examples of using CORS requests|http://www.nczonline.net/blog/2010/05/25/cross-domain-ajax-with-cross-origin-resource-sharing/>
-* L<MSDN - XDomainRequest Object|http://msdn.microsoft.com/en-us/library/cc288060%28v=vs.85%29.aspx>
-* L<XDomainRequest - Restrictions, Limitations and Workarounds|http://blogs.msdn.com/b/ieinternals/archive/2010/05/13/xdomainrequest-restrictions-limitations-and-workarounds.aspx>
-* L<Wikipedia - Cross-Origin Resource Sharing|http://en.wikipedia.org/wiki/Cross-Origin_Resource_Sharing>
-* L<CORS advocacy|http://enable-cors.org/>
+=over 4
+
+=item * L<W3C Spec for Cross-Origin Resource Sharing|http://www.w3.org/TR/cors/>
+
+=item * L<Mozilla Developer Center - HTTP Access Control|https://developer.mozilla.org/En/HTTP_access_control>
+
+=item * L<Mozilla Developer Center - Server-Side Access Control|https://developer.mozilla.org/En/Server-Side_Access_Control>
+
+=item * L<Cross browser examples of using CORS requests|http://www.nczonline.net/blog/2010/05/25/cross-domain-ajax-with-cross-origin-resource-sharing/>
+
+=item * L<MSDN - XDomainRequest Object|http://msdn.microsoft.com/en-us/library/cc288060%28v=vs.85%29.aspx>
+
+=item * L<XDomainRequest - Restrictions, Limitations and Workarounds|http://blogs.msdn.com/b/ieinternals/archive/2010/05/13/xdomainrequest-restrictions-limitations-and-workarounds.aspx>
+
+=item * L<Wikipedia - Cross-Origin Resource Sharing|http://en.wikipedia.org/wiki/Cross-Origin_Resource_Sharing>
+
+=item * L<CORS advocacy|http://enable-cors.org/>
+
+=back
 
 =head2 CSRF Resources
 
-=for :list
-* L<Wikipedia - Cross-site request forgery|http://en.wikipedia.org/wiki/Cross-site_request_forgery>
-* L<Stanford Web Security Research - Cross-Site Request Forgery|http://seclab.stanford.edu/websec/csrf/>
-* L<WebKit Bugzilla - Add origin header to POST requests|https://bugs.webkit.org/show_bug.cgi?id=20792>
-* L<Mozilla Bugzilla - Implement Origin header CSRF mitigation|https://bugzilla.mozilla.org/show_bug.cgi?id=446344>
+=over 4
+
+=item * L<Wikipedia - Cross-site request forgery|http://en.wikipedia.org/wiki/Cross-site_request_forgery>
+
+=item * L<Stanford Web Security Research - Cross-Site Request Forgery|http://seclab.stanford.edu/websec/csrf/>
+
+=item * L<WebKit Bugzilla - Add origin header to POST requests|https://bugs.webkit.org/show_bug.cgi?id=20792>
+
+=item * L<Mozilla Bugzilla - Implement Origin header CSRF mitigation|https://bugzilla.mozilla.org/show_bug.cgi?id=446344>
+
+=back
 
 =head2 Related Technologies
 
-=for :list
-* L<Cross-domain policy file for Flash|http://www.adobe.com/devnet/articles/crossdomain_policy_file_spec.html>
-* L<Wikipedia - JSONP|http://en.wikipedia.org/wiki/JSONP>
+=over 4
+
+=item * L<Cross-domain policy file for Flash|http://www.adobe.com/devnet/articles/crossdomain_policy_file_spec.html>
+
+=item * L<Wikipedia - JSONP|http://en.wikipedia.org/wiki/JSONP>
+
+=back
+
+=head1 AUTHOR
+
+Graham Knop <haarg@haarg.org>
+
+=head1 COPYRIGHT AND LICENSE
+
+This software is copyright (c) 2011 by Graham Knop.
+
+This is free software; you can redistribute it and/or modify it under
+the same terms as the Perl 5 programming language system itself.
+
+=head1 AUTHOR
+
+haarg - Graham Knop (cpan:HAARG) <haarg@haarg.org>
+
+=head2 CONTRIBUTORS
+
+None so far.
+
+=head1 COPYRIGHT
+
+Copyright (c) 2011 the Plack::Middleware::CrossOrigin L</AUTHOR> and
+L</CONTRIBUTORS> as listed above.
+
+=head1 LICENSE
+
+This library is free software and may be distributed under the same terms
+as perl itself.
 
 =cut
-
