@@ -145,7 +145,7 @@ test_psgi
         ]);
         $res = $cb->($req);
         is $res->content, 'Hello World', 'OPTIONS request without Allow-Origin processes as normal';
-        like $res->header('Access-Control-Expose-Headers'), qr{^(?:X-Some-Other-Header, Vary|Vary, X-Some-Other-Header)$}, 'Wildcard expose headers returned';
+        is $res->header('Access-Control-Expose-Headers'), 'Vary, X-Some-Other-Header', 'Wildcard expose headers returned';
         is $res->header('Vary'), 'Origin', 'Vary header added';
 
         $req = HTTP::Request->new(GET => 'http://localhost/', [

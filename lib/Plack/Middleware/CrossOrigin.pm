@@ -213,7 +213,7 @@ sub call {
         if ($expose_headers_h->{'*'}) {
             my %headers = @{ $res->[1] };
             delete @headers{@simple_response_headers};
-            $expose_headers = [keys %headers];
+            $expose_headers = [sort keys %headers];
         }
 
         push @headers, 'Access-Control-Expose-Headers' => join ', ', @$expose_headers;
