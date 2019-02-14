@@ -2,7 +2,7 @@ package Plack::Middleware::CrossOrigin;
 use strict;
 use warnings;
 
-our $VERSION = '0.012';
+our $VERSION = '0.013';
 $VERSION =~ tr/_//d;
 
 use 5.008;
