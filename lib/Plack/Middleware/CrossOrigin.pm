@@ -138,11 +138,7 @@ sub call {
         $continue_on_failure = 1;
     }
     else {
-        return Plack::Util::response_cb($self->app->($env), sub {
-            my $res = shift;
-            _add_vary($res->[1]);
-            return;
-        });
+        return _with_vary($self->app->($env));
     }
 
     my $request_method  = $env->{HTTP_ACCESS_CONTROL_REQUEST_METHOD};
@@ -163,11 +159,7 @@ sub call {
     my @headers;
 
     if (not ($allowed_origins_h->{'*'} || $origin =~ $self->{origins_re} ) ) {
-        return Plack::Util::response_cb($fail->($env), sub {
-            my $res = shift;
-            _add_vary($res->[1]);
-            return;
-        });
+        return _with_vary($fail->($env));
     }
 
     if ($preflight) {
@@ -209,7 +201,10 @@ sub call {
     return $self->response_cb($res, sub {
         my $res = shift;
 
-        _add_vary($res->[1]);
+        if (! _vary_headers($res->[1])->{origin}) {
+            push @{ $res->[1] }, 'Vary' => 'Origin';
+        }
+
         if ($expose_headers_h->{'*'}) {
             my %headers = @{ $res->[1] };
             delete @headers{@simple_response_headers};
@@ -230,13 +225,26 @@ sub _response_success {
     [200, [ 'Content-Type' => 'text/plain' ], [] ];
 }
 
-sub _add_vary {
+sub _with_vary {
+    my ($res) = @_;
+    return Plack::Util::response_cb($res, sub {
+        my $res = shift;
+
+        if (! _vary_headers($res->[1])->{origin}) {
+            push @{ $res->[1] }, 'Vary' => 'Origin';
+        }
+    });
+}
+
+sub _vary_headers {
     my ($headers) = @_;
 
-    unless (grep { m{^\s*Origin\s*$}i } map { split /,/ } Plack::Util::header_get($headers, 'Vary')) {
-        push @{ $headers }, 'Vary' => 'Origin';
-    }
-    return;
+    my %vary =
+        map { s/\A\s+//; s/\s+\z//; ( lc, 1) }
+        map +(split /,/),
+        Plack::Util::header_get($headers, 'Vary');
+
+    return \%vary;
 }
 
 1;
