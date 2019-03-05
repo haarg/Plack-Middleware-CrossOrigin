@@ -103,7 +103,7 @@ sub prepare_app {
         map qr/\A(?:$_)\z/,
         join '|',
         map +(
-            join '[a-z.-]*',
+            join '[a-z0-9.-]*',
             map quotemeta,
             split /\*/, $_, -1
         ),
