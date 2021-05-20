@@ -374,4 +374,34 @@ test_psgi
     },
 ;
 
+test_psgi
+    app => builder {
+        enable 'CrossOrigin',
+            origins_regex => qr/\.example.com:8080$/,
+        ;
+        sub { [ 200, [ 'Content-Type' => 'text/plain' ], [ 'Hello World' ] ] };
+    },
+    client => sub {
+        my $cb = shift;
+        my $req;
+        my $res;
+
+        $req = HTTP::Request->new(OPTIONS => 'http://localhost/', [
+            'Access-Control-Request-Method' => 'POST',
+            'Origin' => 'http://www.example.com:8080',
+        ]);
+        $res = $cb->($req);
+        is $res->header('Access-Control-Allow-Origin'),
+            'http://www.example.com:8080',
+            'Origin accepted with matching origins_regex';
+
+        $req = HTTP::Request->new(OPTIONS => 'http://localhost/', [
+            'Access-Control-Request-Method' => 'POST',
+            'Origin' => 'http://www.example.com:8000',
+        ]);
+        $res = $cb->($req);
+        is $res->header('Access-Control-Allow-Origin'), undef,
+            'Origin not accepted for mismatched origins_regex';
+    };
+
 done_testing;
