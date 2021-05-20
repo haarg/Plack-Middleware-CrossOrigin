@@ -11,6 +11,7 @@ use parent qw(Plack::Middleware);
 use Plack::Util;
 use Plack::Util::Accessor qw(
     origins
+    origins_regex
     headers
     methods
     max_age
@@ -99,15 +100,19 @@ sub prepare_app {
         unless ref $self->expose_headers;
 
     $self->{origins_h} = { map { $_ => 1 } @{ $self->origins } };
-    ($self->{origins_re}) =
-        map qr/\A(?:$_)\z/,
-        join '|',
-        map +(
-            join '[a-z0-9.-]*',
-            map quotemeta,
-            split /\*/, $_, -1
-        ),
-        @{ $self->origins };
+
+    ($self->{origins_re}) = $self->origins_regex
+        ? ( $self->origins_regex )
+        : (
+            map qr/\A(?:$_)\z/,
+            join '|',
+            map +(
+                join '[a-z0-9.-]*',
+                map quotemeta,
+                split /\*/, $_, -1
+            ),
+            @{ $self->origins }
+    );
 
     $self->{methods_h} = { map { $_ => 1 } @{ $self->methods } };
     $self->{headers_h} = { map { lc $_ => 1 } @{ $self->headers } };
@@ -325,6 +330,11 @@ scheme and host, with no path information. (C<http://www.example.com>)
 for this middleware to have any effect.  This will be matched against the
 C<Origin> request header, and will control the C<Access-Control-Allow-Origin>
 response header.  If the origin does not match, the request is aborted.
+
+=item origins_regex
+
+A manual regex to provide for matching origins to allow.  Should not be used
+with the C<origins> option as it will override it.
 
 =item headers
 
